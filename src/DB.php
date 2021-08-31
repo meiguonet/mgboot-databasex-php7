@@ -22,19 +22,46 @@ use Throwable;
 
 final class DB
 {
-    private static ?LoggerInterface $logger;
-    private static bool $debugLogEnabled = false;
-    private static array $connectionSettings = [];
-    private static array $goBackendSettings = [];
-    private static bool $poolEnabled = false;
-    private static string $cacheDir = 'classpath:cache';
-    private static array $tableSchemas = [];
+    /**
+     * @var LoggerInterface|null
+     */
+    private static $logger = null;
+
+    /**
+     * @var bool
+     */
+    private static $debugLogEnabled = false;
+
+    /**
+     * @var array
+     */
+    private static $connectionSettings = [];
+
+    /**
+     * @var array
+     */
+    private static $goBackendSettings = [];
+
+    /**
+     * @var bool
+     */
+    private static $poolEnabled = false;
+
+    /**
+     * @var string
+     */
+    private static $cacheDir = 'classpath:cache';
+
+    /**
+     * @var array
+     */
+    private static $tableSchemas = [];
 
     private function __construct()
     {
     }
 
-    private function __clone(): void
+    private function __clone()
     {
     }
 
@@ -154,8 +181,6 @@ final class DB
             throw $ex;
         }
 
-        $hasError = false;
-
         try {
             $stmt = $pdo->prepare($sql);
 
@@ -165,18 +190,13 @@ final class DB
 
             self::pdoBindParams($stmt, $params);
             $stmt->execute();
-            self::freeConnection($conn);
             return collect($stmt->fetchAll());
         } catch (Throwable $ex) {
-            $hasError = true;
             $ex = self::wrapAsDbException($ex);
-            self::freeConnection($conn, $ex);
             self::writeErrorLog($ex);
             throw $ex;
         } finally {
-            if (!$hasError) {
-                self::freeConnection($conn);
-            }
+            self::freeConnection($conn);
         }
     }
 
@@ -207,8 +227,6 @@ final class DB
             throw $ex;
         }
 
-        $hasError = false;
-
         try {
             $stmt = $pdo->prepare($sql);
 
@@ -221,15 +239,11 @@ final class DB
             $data = $stmt->fetch();
             return is_array($data) ? $data : null;
         } catch (Throwable $ex) {
-            $hasError = true;
             $ex = self::wrapAsDbException($ex);
-            self::freeConnection($conn, $ex);
             self::writeErrorLog($ex);
             throw $ex;
         } finally {
-            if (!$hasError) {
-                self::freeConnection($conn);
-            }
+            self::freeConnection($conn);
         }
     }
 
@@ -259,8 +273,6 @@ final class DB
             throw $ex;
         }
 
-        $hasError = false;
-
         try {
             $stmt = $pdo->prepare($sql);
 
@@ -272,15 +284,11 @@ final class DB
             $stmt->execute();
             return (int) $stmt->fetchColumn();
         } catch (Throwable $ex) {
-            $hasError = true;
             $ex = self::wrapAsDbException($ex);
-            self::freeConnection($conn, $ex);
             self::writeErrorLog($ex);
             throw $ex;
         } finally {
-            if (!$hasError) {
-                self::freeConnection($conn);
-            }
+            self::freeConnection($conn);
         }
     }
 
@@ -310,8 +318,6 @@ final class DB
             throw $ex;
         }
 
-        $hasError = false;
-
         try {
             $stmt = $pdo->prepare($sql);
 
@@ -327,15 +333,11 @@ final class DB
 
             return (int) $pdo->lastInsertId();
         } catch (Throwable $ex) {
-            $hasError = true;
             $ex = self::wrapAsDbException($ex);
-            self::freeConnection($conn, $ex);
             self::writeErrorLog($ex);
             throw $ex;
         } finally {
-            if (!$hasError) {
-                self::freeConnection($conn);
-            }
+            self::freeConnection($conn);
         }
     }
 
@@ -365,8 +367,6 @@ final class DB
             throw $ex;
         }
 
-        $hasError = false;
-
         try {
             $stmt = $pdo->prepare($sql);
 
@@ -382,19 +382,20 @@ final class DB
 
             return $stmt->rowCount();
         } catch (Throwable $ex) {
-            $hasError = true;
             $ex = self::wrapAsDbException($ex);
-            self::freeConnection($conn, $ex);
             self::writeErrorLog($ex);
             throw $ex;
         } finally {
-            if (!$hasError) {
-                self::freeConnection($conn);
-            }
+            self::freeConnection($conn);
         }
     }
 
-    public static function sumBySql(string $sql, array $params = []): int|float|string
+    /**
+     * @param string $sql
+     * @param array $params
+     * @return int|float|string
+     */
+    public static function sumBySql(string $sql, array $params = [])
     {
         self::logSql($sql, $params);
 
@@ -426,8 +427,6 @@ final class DB
             self::writeErrorLog($ex);
             throw $ex;
         }
-
-        $hasError = false;
 
         try {
             $stmt = $pdo->prepare($sql);
@@ -462,15 +461,11 @@ final class DB
 
             return 0;
         } catch (Throwable $ex) {
-            $hasError = true;
             $ex = self::wrapAsDbException($ex);
-            self::freeConnection($conn, $ex);
             self::writeErrorLog($ex);
             throw $ex;
         } finally {
-            if (!$hasError) {
-                self::freeConnection($conn);
-            }
+            self::freeConnection($conn);
         }
     }
 
@@ -505,8 +500,6 @@ final class DB
             throw $ex;
         }
 
-        $hasError = false;
-
         try {
             $stmt = $pdo->prepare($sql);
 
@@ -517,15 +510,11 @@ final class DB
             self::pdoBindParams($stmt, $params);
             $stmt->execute();
         } catch (Throwable $ex) {
-            $hasError = true;
             $ex = self::wrapAsDbException($ex);
-            self::freeConnection($conn, $ex);
             self::writeErrorLog($ex);
             throw $ex;
         } finally {
-            if (!$hasError) {
-                self::freeConnection($conn);
-            }
+            self::freeConnection($conn);
         }
     }
 
@@ -595,7 +584,11 @@ final class DB
         return [$conn, $conn->getRealConnection()];
     }
 
-    private static function freeConnection(mixed $conn, ?Throwable $ex = null): void
+    /**
+     * @param mixed $conn
+     * @param Throwable|null $ex
+     */
+    private static function freeConnection($conn, ?Throwable $ex = null): void
     {
         if ($conn instanceof ConnectionInterface && !$conn->inTranstionMode()) {
             $conn->free($ex);
@@ -643,7 +636,7 @@ final class DB
             }
 
             if (is_object($value)) {
-                throw new DbException(null, 'fail to bind param, param type: ' . $value::class);
+                throw new DbException(null, 'fail to bind param, param type: ' . get_class($value));
             }
         }
     }
@@ -652,7 +645,7 @@ final class DB
     {
         try {
             $conn = PdoConnection::create(self::$connectionSettings);
-        } catch (Throwable) {
+        } catch (Throwable $ex) {
             return [];
         }
 
@@ -676,7 +669,7 @@ final class DB
                     }
                 }
             }
-        } catch (Throwable) {
+        } catch (Throwable $ex) {
             $conn->close();
             return [];
         }
@@ -698,7 +691,7 @@ final class DB
                     continue;
                 }
 
-                $schema = collect($items)->map(function ($item) {
+                $schema = array_map(function ($item) {
                     $fieldName = $item['Field'];
                     $nullable = stripos($item['Null'], 'YES') !== false;
                     $isPrimaryKey = $item['Key'] === 'PRI';
@@ -706,7 +699,7 @@ final class DB
                     $autoIncrement = $item['Extra'] === 'auto_increment';
                     $parts = preg_split(Regexp::SPACE_SEP, $item['Type']);
 
-                    if (str_contains($parts[0], '(')) {
+                    if (strpos($parts[0], '(') !== false) {
                         $fieldType = StringUtils::substringBefore($parts[0], '(');
                         $fieldSize = str_replace($fieldType, '', $parts[0]);
                     } else {
@@ -714,7 +707,7 @@ final class DB
                         $fieldSize = '';
                     }
 
-                    if (!str_starts_with($fieldSize, '(') || !str_ends_with($fieldSize, ')')) {
+                    if (!StringUtils::startsWith($fieldSize, '(') || !StringUtils::endsWith($fieldSize, ')')) {
                         $fieldSize = '';
                     } else {
                         $fieldSize = rtrim(ltrim($fieldSize, '('), ')');
@@ -736,8 +729,8 @@ final class DB
                         'autoIncrement',
                         'isPrimaryKey'
                     );
-                })->toArray();
-            } catch (Throwable) {
+                }, $items);
+            } catch (Throwable $ex) {
                 $schema = null;
             }
 
@@ -766,7 +759,7 @@ final class DB
         if (is_file($cacheFile)) {
             try {
                 $schemas = include($cacheFile);
-            } catch (Throwable) {
+            } catch (Throwable $ex) {
                 $schemas = [];
             }
         }
@@ -815,17 +808,25 @@ final class DB
         $host = self::$goBackendSettings['host'];
         $port = (int) self::$goBackendSettings['port'];
 
-        $timeout = match ($cmd) {
-            '@@select' => 120.0,
-            '@@first', '@@count', '@@sum' => 10.0,
-            default => 5.0
-        };
-
-        $maxPkgLength = match ($cmd) {
-            '@@select' => 8 * 1024 * 1024,
-            '@@first' => 16 * 1024,
-            default => 256
-        };
+        switch ($cmd) {
+            case '@@select':
+                $timeout = 120.0;
+                $maxPkgLength = 8 * 1024 * 1024;
+                break;
+            case '@@first':
+                $timeout = 10.0;
+                $maxPkgLength = 16 * 1024;
+                break;
+            case '@@count':
+            case '@@sum':
+                $timeout = 10.0;
+                $maxPkgLength = 256;
+                break;
+            default:
+                $timeout = 5.0;
+                $maxPkgLength = 256;
+                break;
+        }
 
         $msg = "@@db:$cmd:$query";
 
@@ -919,7 +920,10 @@ final class DB
         }
     }
 
-    private static function writeErrorLog(string|Throwable $msg): void
+    /**
+     * @param string|Throwable $msg
+     */
+    private static function writeErrorLog($msg): void
     {
         $logger = self::$logger;
 

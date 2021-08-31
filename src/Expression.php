@@ -4,18 +4,21 @@ namespace mgboot\databasex;
 
 final class Expression
 {
-    private string $expr;
+    /**
+     * @var string
+     */
+    private $expr;
 
     private function __construct(string $expr)
     {
         $this->expr = $expr;
     }
 
-    private function __clone(): void
+    private function __clone()
     {
     }
 
-    public static function create(string $expr): self
+    public static function create(string $expr): Expression
     {
         return new self($expr);
     }

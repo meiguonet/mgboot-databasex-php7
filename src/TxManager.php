@@ -7,14 +7,21 @@ use mgboot\swoole\Swoole;
 
 final class TxManager
 {
-    private static ?ConnectionInterface $curConn = null;
-    private static array $connMap = [];
+    /**
+     * @var ConnectionInterface|null
+     */
+    private static $curConn = null;
+
+    /**
+     * @var array
+     */
+    private static $connMap = [];
 
     private function __construct()
     {
     }
 
-    private function __clone(): void
+    private function __clone()
     {
     }
 
